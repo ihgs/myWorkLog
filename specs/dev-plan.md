@@ -33,7 +33,7 @@
 
 | ID | タスク | MS | 依存 | 状態 | EARS要求 | feature/検証 |
 |----|--------|----|------|------|----------|--------------|
-| T-01 | SQLite接続基盤 | M0 | — | TODO | R-ARCH-1, R-DATA-1, R-DATA-3 | data-persistence.feature |
+| T-01 | SQLite接続基盤 | M0 | — | DONE | R-ARCH-1, R-DATA-1, R-DATA-3 | data-persistence.feature |
 | T-02 | スキーマ/マイグレーション/初期データ | M0 | T-01 | TODO | R-DATA-2, R-SET-3 | data-persistence / settings |
 | T-03 | ドメインモデル/リポジトリ層 | M1 | T-02 | TODO | R-ARCH-1, R-ARCH-3, R-ARCH-4 | コードレビュー |
 | T-04 | 作業区分コマンド(CRUD) | M2 | T-03 | TODO | R-CAT-1〜5, R-CAT-9, R-DATA-4, R-CAT-2 | work-category-management.feature |

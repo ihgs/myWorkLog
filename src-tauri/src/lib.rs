@@ -1,14 +1,37 @@
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+mod db;
+
+use db::AppState;
+use tauri::{Manager, State};
+
+/// DB接続がコマンドから利用可能であることを確認するヘルスチェック（T-01 DoD）。
+///
+/// 後続タスクで本コマンドはドメイン別コマンドに置き換わるが、
+/// 接続がTauri State経由でコマンドから使えることをここで担保する。
 #[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
+fn db_health_check(state: State<'_, AppState>) -> Result<String, String> {
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("DB接続のロック取得に失敗しました: {e}"))?;
+    let value: i64 = conn
+        .query_row("SELECT 1", [], |row| row.get(0))
+        .map_err(|e| format!("DBヘルスチェックに失敗しました: {e}"))?;
+    Ok(format!("ok:{value}"))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet])
+        .setup(|app| {
+            // app_data_dir 配下にSQLite接続を確立し、Tauri State で共有する（R-DATA-3 / R-ARCH-1）。
+            let conn = db::init(app.handle())?;
+            app.manage(AppState {
+                db: std::sync::Mutex::new(conn),
+            });
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![db_health_check])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

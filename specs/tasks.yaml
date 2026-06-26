@@ -32,7 +32,7 @@ tasks:
       Rust依存追加(rusqlite + マイグレーション基盤, chrono)、app_data_dir 配下に
       SQLite接続を確立し、接続をTauri Stateで共有する。
     depends_on: []
-    status: TODO
+    status: DONE
     ears: [R-ARCH-1, R-DATA-1, R-DATA-3]
     features: [data-persistence.feature]
     scenario_tags: ["@R-DATA-1", "@R-DATA-3"]
