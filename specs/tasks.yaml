@@ -1,0 +1,237 @@
+# =====================================================================
+# 開発タスク（正データ / single source of truth）— Work Log Management (mylog)
+# ---------------------------------------------------------------------
+# これが開発状況・依存・トレーサビリティの「正」。dev-plan.md はこの俯瞰ビュー。
+# status: TODO | DOING | REVIEW | DONE | BLOCKED
+# 連鎖: EARS要求(basic-design.md) ⇄ Gherkin(features/*.feature, traceability.md) ⇄ task(本書)
+# 要求を追加/変更したら basic-design.md・traceability.md・本書を同時更新する。
+# =====================================================================
+
+meta:
+  project: mylog
+  status_values: [TODO, DOING, REVIEW, DONE, BLOCKED]
+  design_doc: basic-design.md
+  traceability_doc: features/traceability.md
+  ears_total: 47   # basic-design.md のEARS要求総数。全件が tasks に割当済みであること
+
+milestones:
+  M0: { name: 基盤,            desc: DB接続・スキーマ・初期化 }
+  M1: { name: ドメイン/リポジトリ, desc: Rustモデル・DTO・リポジトリ層 }
+  M2: { name: コマンド,          desc: 作業区分・実績・設定のTauriコマンド(CRUD) }
+  M3: { name: 集計,            desc: ダッシュボード集計＋単体テスト }
+  M4: { name: フロント基盤,      desc: ルーティング・ナビ・invokeラッパ・共通フォーマット }
+  M5: { name: 画面,            desc: 各画面のUI/フォーム/グラフ }
+  M6: { name: 横断,            desc: バリデーション・エラー通知 }
+  M7: { name: 仕上げ,          desc: クロスプラットフォーム/CI/パッケージング }
+
+tasks:
+  - id: T-01
+    title: SQLite接続基盤
+    milestone: M0
+    desc: >-
+      Rust依存追加(rusqlite + マイグレーション基盤, chrono)、app_data_dir 配下に
+      SQLite接続を確立し、接続をTauri Stateで共有する。
+    depends_on: []
+    status: TODO
+    ears: [R-ARCH-1, R-DATA-1, R-DATA-3]
+    features: [data-persistence.feature]
+    scenario_tags: ["@R-DATA-1", "@R-DATA-3"]
+    verify: gherkin+review
+    dod: DBファイルが app_data_dir 配下に生成され、接続がコマンドから利用可能。
+
+  - id: T-02
+    title: スキーマ/マイグレーション/初期データ
+    milestone: M0
+    desc: >-
+      data-model.dbml を正にスキーマDDLを作成し、初回起動マイグレーションを実装。
+      setting 初期レコード(baseline_hours = 8)を投入。FK ON DELETE CASCADE を有効化。
+    depends_on: [T-01]
+    status: TODO
+    ears: [R-DATA-2, R-SET-3]
+    features: [data-persistence.feature, settings.feature]
+    scenario_tags: ["@R-DATA-2", "@R-SET-3"]
+    verify: gherkin
+    dod: 初回起動で全テーブル作成・初期設定投入。カスケード削除が有効。
+
+  - id: T-03
+    title: ドメインモデル/リポジトリ層
+    milestone: M1
+    desc: >-
+      Rustドメインモデル/DTO(WorkCategory, MonthlyPlan, ActualWork, Setting; serde derive)と
+      リポジトリ層(CRUD・絞り込みクエリ)。SQLはRust側に集約する。
+    depends_on: [T-02]
+    status: TODO
+    ears: [R-ARCH-1, R-ARCH-3, R-ARCH-4]
+    features: []
+    scenario_tags: []
+    verify: review   # FEにSQL記述なしを構成/コードレビューで担保
+    dod: 各エンティティのリポジトリがテスト可能な形で実装され、SQLがRust側に閉じている。
+
+  - id: T-04
+    title: 作業区分コマンド(CRUD)
+    milestone: M2
+    desc: >-
+      list/create/update/delete_work_category(月予定含む)。削除時に月予定・実績を
+      カスケード削除。コードは重複許容(ユニーク制約を設けない)。月予定は yyyy/mm 受付。
+    depends_on: [T-03]
+    status: TODO
+    ears: [R-CAT-1, R-CAT-2, R-CAT-3, R-CAT-4, R-CAT-5, R-CAT-9, R-DATA-4]
+    features: [work-category-management.feature]
+    scenario_tags: ["@R-CAT-1", "@R-CAT-2", "@R-CAT-3", "@R-CAT-4", "@R-CAT-5", "@R-CAT-9", "@R-DATA-4"]
+    verify: gherkin
+    dod: 全コマンドが Result<T,String> で動作。月予定 yyyy/mm 受付、カスケード削除。
+
+  - id: T-05
+    title: 実績工数コマンド(CRUD)
+    milestone: M2
+    desc: >-
+      list_actual_works(期間/区分絞り込み)・create/update/delete_actual_work。
+      作業日 yyyy/mm/dd、メモは任意(NULL許容)。
+    depends_on: [T-03]
+    status: TODO
+    ears: [R-ACT-1, R-ACT-3, R-ACT-4, R-ACT-5, R-ACT-6, R-ACT-8, R-ACT-9]
+    features: [actual-work-entry.feature]
+    scenario_tags: ["@R-ACT-1", "@R-ACT-3", "@R-ACT-4", "@R-ACT-5", "@R-ACT-6", "@R-ACT-8", "@R-ACT-9"]
+    verify: gherkin
+    dod: CRUD・絞り込みが動作。日付フォーマット保持、メモNULL許容。
+
+  - id: T-06
+    title: 設定コマンド
+    milestone: M2
+    desc: get_setting / update_setting(基準線更新)。
+    depends_on: [T-03]
+    status: TODO
+    ears: [R-SET-1, R-SET-2]
+    features: [settings.feature]
+    scenario_tags: ["@R-SET-1", "@R-SET-2"]
+    verify: gherkin
+    dod: 基準線の取得・更新が永続化される。
+
+  - id: T-07
+    title: ダッシュボード集計コマンド
+    milestone: M3
+    desc: >-
+      get_dashboard_summary(区分別/全体の予定vs実績; 月予定のみ使用・無ければ0)・
+      get_daily_stacked(日別×区分積み上げ; 1日〜月末を網羅、基準線同梱、日合計)。集計はRust側。
+    depends_on: [T-04, T-05, T-06]
+    status: TODO
+    ears: [R-ARCH-4, R-DASH-5, R-DASH-6, R-DASH-11]
+    features: [dashboard.feature]
+    scenario_tags: ["@R-DASH-5", "@R-DASH-6", "@R-DASH-11"]
+    verify: gherkin
+    dod: DashboardSummary / DailyStacked が設計書の構造で返る。
+
+  - id: T-08
+    title: 集計ロジックの単体テスト
+    milestone: M3
+    desc: 月予定0埋め・欠損日補完・日合計・基準線反映の境界を網羅するRust単体テスト。
+    depends_on: [T-07]
+    status: TODO
+    ears: [R-NF-4]
+    features: []
+    scenario_tags: []
+    verify: cargo-test
+    dod: 集計の主要分岐を網羅する単体テストがCIでパス。
+
+  - id: T-09
+    title: ルーティング/ナビゲーション
+    milestone: M4
+    desc: ルート(/, /categories, /actuals, /settings)とナビゲーション、画面切替の骨組み。
+    depends_on: [T-01]
+    status: TODO
+    ears: [R-UI-1]
+    features: [cross-cutting.feature]
+    scenario_tags: ["@R-UI-1"]
+    verify: gherkin
+    dod: 4画面をナビゲーションで相互遷移できる。
+
+  - id: T-10
+    title: invokeラッパ/共通フォーマット
+    milestone: M4
+    desc: >-
+      invoke型付きラッパ(TS↔Rustコマンド境界)＋日付/月の共通フォーマット
+      (yyyy/mm, yyyy/mm/dd)ユーティリティ。全データ授受はinvoke経由。
+    depends_on: [T-04, T-05, T-06, T-07]
+    status: TODO
+    ears: [R-ARCH-2, R-UI-2]
+    features: [cross-cutting.feature]
+    scenario_tags: ["@R-UI-2"]
+    verify: gherkin+review
+    dod: 全データ授受がinvoke経由。日付表示が指定フォーマットに統一。
+
+  - id: T-11
+    title: 作業区分画面
+    milestone: M5
+    desc: >-
+      一覧・登録・編集・削除(月予定の複数入力UI、削除時のカスケード確認ダイアログ)。
+    depends_on: [T-09, T-10]
+    status: TODO
+    ears: [R-CAT-1, R-CAT-3, R-CAT-4, R-CAT-5, R-CAT-6, R-CAT-9]
+    features: [work-category-management.feature]
+    scenario_tags: ["@R-CAT-1", "@R-CAT-3", "@R-CAT-4", "@R-CAT-5", "@R-CAT-6", "@R-CAT-9"]
+    verify: gherkin
+    dod: CRUDがUIから完結。削除時に関連削除の確認を提示。
+
+  - id: T-12
+    title: 実績入力画面
+    milestone: M5
+    desc: 一覧・登録・編集・削除、作業区分セレクト、期間/区分絞り込み。
+    depends_on: [T-09, T-10]
+    status: TODO
+    ears: [R-ACT-2, R-ACT-3, R-ACT-4]
+    features: [actual-work-entry.feature]
+    scenario_tags: ["@R-ACT-2", "@R-ACT-3", "@R-ACT-4"]
+    verify: gherkin
+    dod: 既存区分から選択して登録。絞り込み表示が動作。
+
+  - id: T-13
+    title: ダッシュボード画面
+    milestone: M5
+    desc: >-
+      対象月セレクタ(当月初期)、予定vs実績棒グラフ(全体/区分別)、日別積み上げ棒グラフ
+      (区分色分け・基準線・日合計ラベル)。react-vega 導入。
+    depends_on: [T-07, T-09, T-10]
+    status: TODO
+    ears: [R-DASH-1, R-DASH-2, R-DASH-3, R-DASH-4, R-DASH-7, R-DASH-8, R-DASH-9, R-DASH-10]
+    features: [dashboard.feature]
+    scenario_tags: ["@R-DASH-1", "@R-DASH-2", "@R-DASH-3", "@R-DASH-4", "@R-DASH-7", "@R-DASH-8", "@R-DASH-9", "@R-DASH-10"]
+    verify: gherkin
+    dod: 2グラフが描画され、月変更で再描画。基準線・日合計表示。
+
+  - id: T-14
+    title: 設定画面
+    milestone: M5
+    desc: 基準線の表示・更新。更新値を日別積み上げ基準線へ反映。
+    depends_on: [T-06, T-09, T-10, T-13]
+    status: TODO
+    ears: [R-SET-1, R-SET-2, R-SET-4]
+    features: [settings.feature]
+    scenario_tags: ["@R-SET-1", "@R-SET-2", "@R-SET-4"]
+    verify: gherkin
+    dod: 基準線更新後、ダッシュボードの基準線が新値で表示。
+
+  - id: T-15
+    title: バリデーション/エラー通知(横断)
+    milestone: M6
+    desc: >-
+      入力バリデーション(必須・数値0以上)をFE/Rust双方で実装。コマンドエラーの
+      ユーザー通知(トースト/ダイアログ)。
+    depends_on: [T-04, T-05, T-11, T-12]
+    status: TODO
+    ears: [R-CAT-7, R-CAT-8, R-ACT-7, R-NF-1, R-NF-2]
+    features: [work-category-management.feature, actual-work-entry.feature, cross-cutting.feature]
+    scenario_tags: ["@R-CAT-7", "@R-CAT-8", "@R-ACT-7", "@R-NF-1", "@R-NF-2"]
+    verify: gherkin
+    dod: 必須/負数を両層で拒否しエラー通知。コマンド失敗時に通知。
+
+  - id: T-16
+    title: クロスプラットフォーム/CI/パッケージング
+    milestone: M7
+    desc: macOS/Windowsビルド確認、CI(cargo test + FEビルド + featureシナリオ実行)、パッケージング。
+    depends_on: [T-08, T-13, T-14, T-15]
+    status: TODO
+    ears: [R-NF-3]
+    features: []
+    scenario_tags: []
+    verify: ci
+    dod: 両OSでビルド・起動成功、CIグリーン。
