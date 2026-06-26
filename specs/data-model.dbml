@@ -1,0 +1,72 @@
+// =====================================================================
+// Work Log Management (mylog) — データモデル定義 (DBML)
+// =====================================================================
+// 工数・時間の単位はすべて「時間(h)」で統一する。
+// 日付は文字列で保持する: 月は 'yyyy/mm'、日は 'yyyy/mm/dd'。
+// DBアクセスはRust側に集約し、SQLiteに永続化する。
+// DBMLリファレンス: https://dbml.dbdiagram.io/docs/
+// =====================================================================
+
+Project mylog {
+  database_type: 'SQLite'
+  Note: '''
+    仕事の作業量（工数）を管理するデスクトップアプリのデータモデル。
+    作業区分ごとの予定工数に対し、日々の実績工数を記録し可視化する。
+  '''
+}
+
+Table work_category {
+  id integer [pk, increment, note: '内部一意ID（主キー）。コードは重複可能なためサロゲートキーを採用']
+  code text [not null, note: 'コード。重複可能（ユニーク制約を設けない）']
+  name text [not null, note: '作業区分の名前']
+  planned_hours real [not null, default: 0, note: '予定工数（全体）。時間(h)。ダッシュボードの月別集計には使用しない参考値']
+  created_at text [not null, note: '作成日時（ISO8601）']
+  updated_at text [not null, note: '更新日時（ISO8601）']
+
+  Note: '作業区分。作業の分類単位。月予定(monthly_plan)と実績工数(actual_work)を保持する親エンティティ'
+}
+
+Table monthly_plan {
+  id integer [pk, increment, note: '一意ID（主キー）']
+  work_category_id integer [not null, note: '作業区分への参照（work_category.id）']
+  target_month text [not null, note: "対象月。'yyyy/mm' 形式"]
+  planned_hours real [not null, default: 0, note: 'その月の予定工数。時間(h)。ダッシュボードの月別予定はこの値のみを使用する']
+
+  indexes {
+    (work_category_id, target_month) [unique, note: '同一作業区分・同一月の重複登録を禁止']
+  }
+
+  Note: '月予定。作業区分ごと・対象月ごとの予定工数。ダッシュボードの月別予定値の唯一の元データ'
+}
+
+Table actual_work {
+  id integer [pk, increment, note: '一意ID（主キー）']
+  work_category_id integer [not null, note: '作業区分への参照（work_category.id）']
+  actual_hours real [not null, note: '実績時間。時間(h)']
+  work_date text [not null, note: "作業日。'yyyy/mm/dd' 形式"]
+  memo text [note: 'メモ（任意・NULL許容）']
+  created_at text [not null, note: '作成日時（ISO8601）']
+  updated_at text [not null, note: '更新日時（ISO8601）']
+
+  indexes {
+    work_date [note: '日別集計・期間絞り込みの高速化']
+    work_category_id [note: '作業区分別集計の高速化']
+  }
+
+  Note: '実績工数。作業区分を選んで入力した日々の作業実績'
+}
+
+Table setting {
+  id integer [pk, note: '固定値 1。単一レコードのみ存在（アプリ全体の設定）']
+  baseline_hours real [not null, default: 8, note: '日別積み上げグラフの基準線。1日の目安時間。デフォルト8']
+
+  Note: 'アプリケーション設定。基準線などのグローバル設定を1レコードで保持'
+}
+
+// ---------------------------------------------------------------------
+// リレーション（外部キー）
+// 親（作業区分）削除時に子レコードをカスケード削除する
+// ---------------------------------------------------------------------
+
+Ref: monthly_plan.work_category_id > work_category.id [delete: cascade]
+Ref: actual_work.work_category_id > work_category.id [delete: cascade]
