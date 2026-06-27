@@ -38,7 +38,7 @@
 | T-03 | ドメインモデル/リポジトリ層 | M1 | T-02 | DONE | R-ARCH-1, R-ARCH-3, R-ARCH-4 | コードレビュー |
 | T-04 | 作業区分コマンド(CRUD) | M2 | T-03 | DONE | R-CAT-1〜5, R-CAT-9, R-DATA-4, R-CAT-2 | work-category-management.feature |
 | T-05 | 実績工数コマンド(CRUD) | M2 | T-03 | DONE | R-ACT-1, R-ACT-3〜6, R-ACT-8, R-ACT-9 | actual-work-entry.feature |
-| T-06 | 設定コマンド | M2 | T-03 | TODO | R-SET-1, R-SET-2 | settings.feature |
+| T-06 | 設定コマンド | M2 | T-03 | DONE | R-SET-1, R-SET-2 | settings.feature |
 | T-07 | ダッシュボード集計コマンド | M3 | T-04, T-05, T-06 | TODO | R-ARCH-4, R-DASH-5, R-DASH-6, R-DASH-11 | dashboard.feature |
 | T-08 | 集計ロジックの単体テスト | M3 | T-07 | TODO | R-NF-4 | cargo test |
 | T-09 | ルーティング/ナビゲーション | M4 | T-01 | TODO | R-UI-1 | cross-cutting.feature |

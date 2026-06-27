@@ -100,7 +100,7 @@ tasks:
     milestone: M2
     desc: get_setting / update_setting(基準線更新)。
     depends_on: [T-03]
-    status: TODO
+    status: DONE
     ears: [R-SET-1, R-SET-2]
     features: [settings.feature]
     scenario_tags: ["@R-SET-1", "@R-SET-2"]

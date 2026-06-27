@@ -5,14 +5,14 @@
 //! DBアクセス・SQLはリポジトリ層（`repository`）に委譲し、ここには持ち込まない
 //! （R-ARCH-1 / R-ARCH-3）。
 //!
-//! 本ファイルは作業区分（F1）コマンド（T-04）と
-//! 実績工数（F2）コマンド（T-05）を提供する。
+//! 本ファイルは作業区分（F1）コマンド（T-04）・
+//! 実績工数（F2）コマンド（T-05）・設定（F4）コマンド（T-06）を提供する。
 
 use tauri::State;
 
 use crate::db::AppState;
-use crate::models::{ActualWork, ActualWorkFilter, MonthlyPlanInput, WorkCategory};
-use crate::repository::{actual_work, work_category};
+use crate::models::{ActualWork, ActualWorkFilter, MonthlyPlanInput, Setting, WorkCategory};
+use crate::repository::{actual_work, setting, work_category};
 
 /// 月予定の対象月が `yyyy/mm` 形式かを検証する（R-CAT-9）。
 ///
@@ -215,9 +215,65 @@ pub fn delete_actual_work(state: State<'_, AppState>, id: i64) -> Result<(), Str
     actual_work::delete(&conn, id)
 }
 
+// =====================================================================
+// 設定（F4）コマンド（T-06）
+// =====================================================================
+
+/// 基準線が数値かつ0以上であることを検証する（R-NF-2 と同等の数値0以上ルール）。
+fn validate_baseline_hours(baseline_hours: f64) -> Result<(), String> {
+    if !baseline_hours.is_finite() {
+        return Err("基準線には有効な数値を入力してください".to_string());
+    }
+    if baseline_hours < 0.0 {
+        return Err(format!(
+            "基準線は0以上で入力してください（入力値: {baseline_hours}）"
+        ));
+    }
+    Ok(())
+}
+
+/// 設定（基準線）を取得する（R-SET-1）。初期値は8（R-SET-3）。
+#[tauri::command]
+pub fn get_setting(state: State<'_, AppState>) -> Result<Setting, String> {
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("DB接続のロック取得に失敗しました: {e}"))?;
+    setting::get(&conn)
+}
+
+/// 基準線を更新し保存する（R-SET-2）。
+#[tauri::command]
+pub fn update_setting(
+    state: State<'_, AppState>,
+    baseline_hours: f64,
+) -> Result<Setting, String> {
+    validate_baseline_hours(baseline_hours)?;
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("DB接続のロック取得に失敗しました: {e}"))?;
+    setting::update(&conn, baseline_hours)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn validate_baseline_hours_accepts_non_negative() {
+        // R-SET-2 の保存前検証。0以上の有限数を受け付ける。
+        assert!(validate_baseline_hours(8.0).is_ok());
+        assert!(validate_baseline_hours(0.0).is_ok());
+        assert!(validate_baseline_hours(7.5).is_ok());
+    }
+
+    #[test]
+    fn validate_baseline_hours_rejects_invalid() {
+        assert!(validate_baseline_hours(-1.0).is_err(), "負数は不可");
+        assert!(validate_baseline_hours(f64::NAN).is_err(), "NaNは不可");
+        assert!(validate_baseline_hours(f64::INFINITY).is_err(), "無限大は不可");
+    }
 
     #[test]
     fn validate_month_format_accepts_yyyy_mm() {
