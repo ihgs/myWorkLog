@@ -99,7 +99,7 @@ function Settings() {
                 基準線(h)
                 <input
                   type="number"
-                  step="0.5"
+                  step="0.1"
                   min="0"
                   value={baseline}
                   onChange={(e) => setBaseline(e.target.value)}
