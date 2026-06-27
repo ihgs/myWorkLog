@@ -217,7 +217,7 @@ tasks:
       入力バリデーション(必須・数値0以上)をFE/Rust双方で実装。コマンドエラーの
       ユーザー通知(トースト/ダイアログ)。
     depends_on: [T-04, T-05, T-11, T-12]
-    status: TODO
+    status: DONE
     ears: [R-CAT-7, R-CAT-8, R-ACT-7, R-NF-1, R-NF-2]
     features: [work-category-management.feature, actual-work-entry.feature, cross-cutting.feature]
     scenario_tags: ["@R-CAT-7", "@R-CAT-8", "@R-ACT-7", "@R-NF-1", "@R-NF-2"]

@@ -7,8 +7,10 @@
 // 提示する（R-CAT-5 / R-CAT-6 / R-DATA-4）。
 //
 // 全データ授受は lib/api の invoke ラッパ経由（R-ARCH-2）。日付・月の表示は
-// yyyy/mm 形式で統一する（R-UI-2）。入力バリデーションの本格対応・エラー通知の
-// 共通化は T-15 で行う。本画面では送信前の最小限のフォーム検証のみ行う。
+// yyyy/mm 形式で統一する（R-UI-2）。入力バリデーションは共通モジュール
+// （lib/validation）でフロント側を一元化し、必須・数値0以上を Rust 側と二重に
+// 検証する（R-CAT-7 / R-CAT-8 / R-NF-2）。コマンド失敗は共通トースト（lib/toast）
+// でユーザーへ通知する（R-NF-1）。
 // =====================================================================
 
 import { useEffect, useMemo, useState } from "react";
@@ -18,7 +20,8 @@ import {
   listWorkCategories,
   updateWorkCategory,
 } from "../lib/api";
-import { isValidMonth } from "../lib/format";
+import { useToast } from "../lib/toast";
+import { validateCategoryForm } from "../lib/validation";
 import type { MonthlyPlanInput, WorkCategory } from "../lib/types";
 
 /** フォーム内の月予定行（数値も編集中は文字列で保持する）。 */
@@ -62,6 +65,7 @@ function Categories() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const toast = useToast();
 
   const isEditing = form.id !== null;
 
@@ -69,9 +73,8 @@ function Categories() {
     setLoading(true);
     try {
       setCategories(await listWorkCategories());
-      setError(null);
     } catch (e) {
-      setError(String(e));
+      toast.notifyError(e);
     } finally {
       setLoading(false);
     }
@@ -111,34 +114,15 @@ function Categories() {
     }));
   }
 
-  /** 送信前の最小限のフォーム検証（本格対応は T-15）。問題があればメッセージを返す。 */
-  function validate(): string | null {
-    if (form.code.trim() === "") return "コードを入力してください。";
-    if (form.name.trim() === "") return "名前を入力してください。";
-    const planned = Number(form.plannedHours);
-    if (form.plannedHours.trim() === "" || Number.isNaN(planned)) {
-      return "予定工数を数値で入力してください。";
-    }
-    if (planned < 0) return "予定工数は0以上で入力してください。";
-    for (const p of form.plans) {
-      if (!isValidMonth(p.targetMonth)) {
-        return `月予定の対象月は yyyy/mm 形式で入力してください（入力値: ${p.targetMonth || "空"}）。`;
-      }
-      const ph = Number(p.plannedHours);
-      if (p.plannedHours.trim() === "" || Number.isNaN(ph) || ph < 0) {
-        return "月予定の予定工数は0以上の数値で入力してください。";
-      }
-    }
-    return null;
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const message = validate();
+    // フロント側バリデーション（R-CAT-7 / R-CAT-8 / R-NF-2）。Rust側でも二重に検証する。
+    const message = validateCategoryForm(form);
     if (message) {
       setError(message);
       return;
     }
+    setError(null);
     const monthlyPlans: MonthlyPlanInput[] = form.plans.map((p) => ({
       targetMonth: p.targetMonth,
       plannedHours: Number(p.plannedHours),
@@ -163,7 +147,8 @@ function Categories() {
       resetForm();
       await reload();
     } catch (err) {
-      setError(String(err));
+      // コマンド失敗（Rust側バリデーション拒否を含む）をユーザーへ通知（R-NF-1）。
+      toast.notifyError(err);
     }
   }
 
@@ -180,7 +165,7 @@ function Categories() {
       if (form.id === category.id) resetForm();
       await reload();
     } catch (err) {
-      setError(String(err));
+      toast.notifyError(err);
     }
   }
 

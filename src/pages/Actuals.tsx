@@ -7,8 +7,10 @@
 // 作業区分による絞り込みに対応する（R-ACT-4）。
 //
 // 全データ授受は lib/api の invoke ラッパ経由（R-ARCH-2）。作業日・月の表示は
-// yyyy/mm/dd 形式で統一する（R-UI-2）。入力バリデーションの本格対応・エラー通知の
-// 共通化は T-15 で行う。本画面では送信前の最小限のフォーム検証のみ行う。
+// yyyy/mm/dd 形式で統一する（R-UI-2）。入力バリデーションは共通モジュール
+// （lib/validation）でフロント側を一元化し、必須・数値0以上を Rust 側と二重に
+// 検証する（R-ACT-7 / R-NF-2）。コマンド失敗は共通トースト（lib/toast）で
+// ユーザーへ通知する（R-NF-1）。
 // =====================================================================
 
 import { useEffect, useMemo, useState } from "react";
@@ -19,7 +21,9 @@ import {
   listWorkCategories,
   updateActualWork,
 } from "../lib/api";
-import { currentDate, isValidDate } from "../lib/format";
+import { currentDate } from "../lib/format";
+import { useToast } from "../lib/toast";
+import { validateActualForm } from "../lib/validation";
 import type { ActualWork, WorkCategory } from "../lib/types";
 
 /** 編集中フォームの状態（数値も編集中は文字列で保持する）。`id` が null なら新規登録。 */
@@ -71,6 +75,7 @@ function Actuals() {
   const [filter, setFilter] = useState<FilterState>(emptyFilter);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const toast = useToast();
 
   const isEditing = form.id !== null;
 
@@ -93,9 +98,8 @@ function Actuals() {
           workCategoryId: wcid ? Number(wcid) : undefined,
         }),
       );
-      setError(null);
     } catch (e) {
-      setError(String(e));
+      toast.notifyError(e);
     } finally {
       setLoading(false);
     }
@@ -105,7 +109,7 @@ function Actuals() {
     try {
       setCategories(await listWorkCategories());
     } catch (e) {
-      setError(String(e));
+      toast.notifyError(e);
     }
   }
 
@@ -123,29 +127,15 @@ function Actuals() {
     setError(null);
   }
 
-  /** 送信前の最小限のフォーム検証（本格対応は T-15）。問題があればメッセージを返す。 */
-  function validate(): string | null {
-    if (form.workCategoryId.trim() === "") {
-      return "作業区分を選択してください。";
-    }
-    const hours = Number(form.actualHours);
-    if (form.actualHours.trim() === "" || Number.isNaN(hours)) {
-      return "実績時間を数値で入力してください。";
-    }
-    if (hours < 0) return "実績時間は0以上で入力してください。";
-    if (!isValidDate(form.workDate)) {
-      return `作業日は yyyy/mm/dd 形式で入力してください（入力値: ${form.workDate || "空"}）。`;
-    }
-    return null;
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const message = validate();
+    // フロント側バリデーション（R-ACT-7 / R-NF-2）。Rust側でも二重に検証する。
+    const message = validateActualForm(form);
     if (message) {
       setError(message);
       return;
     }
+    setError(null);
     const memo = form.memo.trim() === "" ? null : form.memo.trim();
     try {
       if (form.id === null) {
@@ -167,7 +157,8 @@ function Actuals() {
       resetForm();
       await reloadWorks(filter);
     } catch (err) {
-      setError(String(err));
+      // コマンド失敗（Rust側バリデーション拒否を含む）をユーザーへ通知（R-NF-1）。
+      toast.notifyError(err);
     }
   }
 
@@ -184,7 +175,7 @@ function Actuals() {
       if (form.id === work.id) resetForm();
       await reloadWorks(filter);
     } catch (err) {
-      setError(String(err));
+      toast.notifyError(err);
     }
   }
 

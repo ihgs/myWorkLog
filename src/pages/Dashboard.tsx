@@ -21,6 +21,7 @@ import { VegaEmbed } from "react-vega";
 import type { VisualizationSpec } from "vega-embed";
 import { getDailyStacked, getDashboardSummary } from "../lib/api";
 import { currentMonth, isValidMonth, shiftMonth } from "../lib/format";
+import { useToast } from "../lib/toast";
 import type { DailyStacked, DashboardSummary } from "../lib/types";
 
 /** 予定/実績棒グラフ用の1レコード。 */
@@ -169,6 +170,7 @@ function Dashboard() {
   const [daily, setDaily] = useState<DailyStacked | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const toast = useToast();
 
   /** 指定月の集計を取得して両グラフのデータを更新する（R-DASH-2）。 */
   async function reload(month: string) {
@@ -176,6 +178,7 @@ function Dashboard() {
       setError(`対象月は yyyy/mm 形式で指定してください（入力値: ${month || "空"}）。`);
       return;
     }
+    setError(null);
     setLoading(true);
     try {
       const [s, d] = await Promise.all([
@@ -184,9 +187,9 @@ function Dashboard() {
       ]);
       setSummary(s);
       setDaily(d);
-      setError(null);
     } catch (e) {
-      setError(String(e));
+      // コマンド失敗をユーザーへ通知（R-NF-1）。
+      toast.notifyError(e);
     } finally {
       setLoading(false);
     }

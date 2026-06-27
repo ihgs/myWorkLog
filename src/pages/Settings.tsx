@@ -7,13 +7,16 @@
 // 反映される（R-SET-4）。基準線は `get_daily_stacked` が `setting.baseline_hours`
 // を同梱して返すため、更新を永続化すればダッシュボード再描画時に新値が表示される。
 //
-// 全データ授受は lib/api の invoke ラッパ経由（R-ARCH-2）。入力バリデーションの
-// 共通化・エラー通知の本格対応は T-15 で行う。本画面では送信前の最小限の検証
-// （必須・数値0以上）のみ行う。
+// 全データ授受は lib/api の invoke ラッパ経由（R-ARCH-2）。入力バリデーションは
+// 共通モジュール（lib/validation）でフロント側を一元化し、数値0以上を Rust 側と
+// 二重に検証する（R-NF-2）。コマンド失敗は共通トースト（lib/toast）でユーザーへ
+// 通知する（R-NF-1）。
 // =====================================================================
 
 import { useEffect, useState } from "react";
 import { getSetting, updateSetting } from "../lib/api";
+import { useToast } from "../lib/toast";
+import { validateBaseline } from "../lib/validation";
 import type { Setting } from "../lib/types";
 
 function Settings() {
@@ -22,6 +25,7 @@ function Settings() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const toast = useToast();
 
   async function reload() {
     setLoading(true);
@@ -29,9 +33,8 @@ function Settings() {
       const s = await getSetting();
       setSetting(s);
       setBaseline(String(s.baselineHours));
-      setError(null);
     } catch (e) {
-      setError(String(e));
+      toast.notifyError(e);
     } finally {
       setLoading(false);
     }
@@ -41,34 +44,26 @@ function Settings() {
     void reload();
   }, []);
 
-  /** 送信前の最小限のフォーム検証（本格対応は T-15）。問題があればメッセージを返す。 */
-  function validate(): string | null {
-    const value = Number(baseline);
-    if (baseline.trim() === "" || Number.isNaN(value)) {
-      return "基準線を数値で入力してください。";
-    }
-    if (value < 0) return "基準線は0以上で入力してください。";
-    return null;
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setNotice(null);
-    const message = validate();
+    // フロント側バリデーション（R-NF-2）。Rust側でも二重に検証する。
+    const message = validateBaseline(baseline);
     if (message) {
       setError(message);
       return;
     }
+    setError(null);
     try {
       const updated = await updateSetting(Number(baseline));
       setSetting(updated);
       setBaseline(String(updated.baselineHours));
-      setError(null);
       setNotice(
         `基準線を ${updated.baselineHours}h に更新しました。ダッシュボードの基準線に反映されます。`,
       );
     } catch (err) {
-      setError(String(err));
+      // コマンド失敗（Rust側バリデーション拒否を含む）をユーザーへ通知（R-NF-1）。
+      toast.notifyError(err);
     }
   }
 
