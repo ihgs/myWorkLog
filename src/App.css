@@ -214,6 +214,11 @@ button.danger {
   font-weight: 600;
 }
 
+.form-notice {
+  color: #1b7a3d;
+  font-weight: 600;
+}
+
 .muted {
   color: #888888;
 }

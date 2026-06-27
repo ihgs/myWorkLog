@@ -203,7 +203,7 @@ tasks:
     milestone: M5
     desc: 基準線の表示・更新。更新値を日別積み上げ基準線へ反映。
     depends_on: [T-06, T-09, T-10, T-13]
-    status: TODO
+    status: DONE
     ears: [R-SET-1, R-SET-2, R-SET-4]
     features: [settings.feature]
     scenario_tags: ["@R-SET-1", "@R-SET-2", "@R-SET-4"]
