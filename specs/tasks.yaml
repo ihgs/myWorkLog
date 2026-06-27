@@ -229,7 +229,7 @@ tasks:
     milestone: M7
     desc: macOS/Windowsビルド確認、CI(cargo test + FEビルド + featureシナリオ実行)、パッケージング。
     depends_on: [T-08, T-13, T-14, T-15]
-    status: TODO
+    status: REVIEW
     ears: [R-NF-3]
     features: []
     scenario_tags: []
