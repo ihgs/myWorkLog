@@ -79,6 +79,78 @@ pub struct Setting {
     pub baseline_hours: f64,
 }
 
+// =====================================================================
+// ダッシュボード集計DTO（T-07）。集計はRust側で構築する（R-ARCH-4）。
+// 構造は basic-design.md 7.3 を正とする。
+// =====================================================================
+
+/// 全体の予定vs実績合計。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SummaryTotal {
+    /// 当月の月予定合計（時間h）。
+    pub planned_hours: f64,
+    /// 当月の実績合計（時間h）。
+    pub actual_hours: f64,
+}
+
+/// 作業区分別の予定vs実績。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CategorySummary {
+    pub work_category_id: i64,
+    pub code: String,
+    pub name: String,
+    /// 当月の月予定（無ければ0）（R-DASH-5 / R-DASH-6）。
+    pub planned_hours: f64,
+    /// 当月の実績合計。
+    pub actual_hours: f64,
+}
+
+/// 月単位の予定/実績集計（区分別・全体）。`get_dashboard_summary` の戻り値。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DashboardSummary {
+    /// 対象月（`yyyy/mm`）。
+    pub year_month: String,
+    pub total: SummaryTotal,
+    pub categories: Vec<CategorySummary>,
+}
+
+/// 日別積み上げの1セグメント（作業区分ごと）。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DailyCategoryHours {
+    pub work_category_id: i64,
+    pub name: String,
+    /// その日・その区分の実績時間（h）。
+    pub hours: f64,
+}
+
+/// 1日分の積み上げデータ。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DailyEntry {
+    /// 作業日（`yyyy/mm/dd`）。1日〜月末まで全て含む（R-DASH-11）。
+    pub date: String,
+    /// その日の合計時間（h）。
+    pub total_hours: f64,
+    /// 作業区分ごとの内訳（実績のある区分のみ）。
+    pub by_category: Vec<DailyCategoryHours>,
+}
+
+/// 日別×区分別の実績積み上げデータ。`get_daily_stacked` の戻り値。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DailyStacked {
+    /// 対象月（`yyyy/mm`）。
+    pub year_month: String,
+    /// 基準線（`setting.baseline_hours`）（R-DASH-9 の元データ）。
+    pub baseline_hours: f64,
+    /// 1日〜月末まで全ての日（R-DASH-11）。
+    pub days: Vec<DailyEntry>,
+}
+
 /// 実績工数一覧の絞り込み条件（R-ACT-4）。いずれも任意。
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

@@ -10,8 +10,12 @@
 
 use tauri::State;
 
+use crate::aggregate;
 use crate::db::AppState;
-use crate::models::{ActualWork, ActualWorkFilter, MonthlyPlanInput, Setting, WorkCategory};
+use crate::models::{
+    ActualWork, ActualWorkFilter, DailyStacked, DashboardSummary, MonthlyPlanInput, Setting,
+    WorkCategory,
+};
 use crate::repository::{actual_work, setting, work_category};
 
 /// 月予定の対象月が `yyyy/mm` 形式かを検証する（R-CAT-9）。
@@ -254,6 +258,41 @@ pub fn update_setting(
         .lock()
         .map_err(|e| format!("DB接続のロック取得に失敗しました: {e}"))?;
     setting::update(&conn, baseline_hours)
+}
+
+// =====================================================================
+// ダッシュボード集計（F3）コマンド（T-07）
+// =====================================================================
+//
+// 集計ロジックはRust側（`aggregate`）に集約する（R-ARCH-4）。
+// コマンド層は対象月の形式検証とロック取得のみを担い、構築は委譲する。
+
+/// 月単位の予定/実績集計（区分別・全体）を返す（R-DASH-5 / R-DASH-6）。
+#[tauri::command]
+pub fn get_dashboard_summary(
+    state: State<'_, AppState>,
+    year_month: String,
+) -> Result<DashboardSummary, String> {
+    validate_month_format(&year_month)?;
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("DB接続のロック取得に失敗しました: {e}"))?;
+    aggregate::dashboard_summary(&conn, &year_month)
+}
+
+/// 日別×区分別の実績積み上げデータ（基準線同梱）を返す（R-DASH-11）。
+#[tauri::command]
+pub fn get_daily_stacked(
+    state: State<'_, AppState>,
+    year_month: String,
+) -> Result<DailyStacked, String> {
+    validate_month_format(&year_month)?;
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("DB接続のロック取得に失敗しました: {e}"))?;
+    aggregate::daily_stacked(&conn, &year_month)
 }
 
 #[cfg(test)]

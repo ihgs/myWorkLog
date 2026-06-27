@@ -1,17 +1,14 @@
+mod aggregate;
 mod commands;
 mod db;
-// models / repository は T-03 で定義。コマンド層（T-04〜T-07）から利用する。
-// 利用が始まるまでの未使用警告を抑止する。
-#[allow(dead_code)]
 mod models;
-#[allow(dead_code)]
 mod repository;
 mod schema;
 
 use commands::{
     create_actual_work, create_work_category, delete_actual_work, delete_work_category,
-    get_setting, list_actual_works, list_work_categories, update_actual_work, update_setting,
-    update_work_category,
+    get_daily_stacked, get_dashboard_summary, get_setting, list_actual_works, list_work_categories,
+    update_actual_work, update_setting, update_work_category,
 };
 
 use db::AppState;
@@ -56,7 +53,9 @@ pub fn run() {
             update_actual_work,
             delete_actual_work,
             get_setting,
-            update_setting
+            update_setting,
+            get_dashboard_summary,
+            get_daily_stacked
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

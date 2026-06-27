@@ -114,7 +114,7 @@ tasks:
       get_dashboard_summary(区分別/全体の予定vs実績; 月予定のみ使用・無ければ0)・
       get_daily_stacked(日別×区分積み上げ; 1日〜月末を網羅、基準線同梱、日合計)。集計はRust側。
     depends_on: [T-04, T-05, T-06]
-    status: TODO
+    status: DONE
     ears: [R-ARCH-4, R-DASH-5, R-DASH-6, R-DASH-11]
     features: [dashboard.feature]
     scenario_tags: ["@R-DASH-5", "@R-DASH-6", "@R-DASH-11"]
