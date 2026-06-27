@@ -19,7 +19,13 @@ import type { ActualDialogState } from "../components/ActualWorkDialog";
 import ActualWorkTable from "../components/ActualWorkTable";
 import { listActualWorks, listWorkCategories } from "../lib/api";
 import { confirmAndDeleteActualWork } from "../lib/actualWorkActions";
-import { currentDate, dateToMonth, isValidDate } from "../lib/format";
+import {
+  currentDate,
+  dateToMonth,
+  fromDateInputValue,
+  isValidDate,
+  toDateInputValue,
+} from "../lib/format";
 import { useToast } from "../lib/toast";
 import type { ActualWork, WorkCategory } from "../lib/types";
 
@@ -132,12 +138,28 @@ function Actuals() {
         <h2>実績工数の登録</h2>
         <label className="month-input">
           作業日
-          <input
-            type="text"
-            value={workDate}
-            onChange={(e) => setWorkDate(e.target.value)}
-            placeholder="2026/06/27"
-          />
+          <div className="date-input-group">
+            <input
+              type="text"
+              value={workDate}
+              onChange={(e) => setWorkDate(e.target.value)}
+              placeholder="2026/06/27"
+            />
+            {/* カレンダーアイコン。透明な date input を重ね、ネイティブの
+                ピッカーに開閉を任せる（選択・外側クリックで自動的に閉じる）。 */}
+            <span className="calendar-icon">
+              📅
+              <input
+                type="date"
+                className="calendar-overlay-input"
+                aria-label="カレンダーから選択"
+                value={toDateInputValue(workDate)}
+                onChange={(e) =>
+                  setWorkDate(fromDateInputValue(e.target.value))
+                }
+              />
+            </span>
+          </div>
         </label>
 
         {!isValidDate(workDate) ? (

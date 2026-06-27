@@ -72,6 +72,22 @@ export function dateToMonth(workDate: string): string | null {
 }
 
 /**
+ * 作業日（`yyyy/mm/dd`）を `<input type="date">` の値（`yyyy-mm-dd`）へ変換する。
+ * 不正な形式なら空文字を返す（カレンダー側は未選択扱い）。
+ */
+export function toDateInputValue(workDate: string): string {
+  return isValidDate(workDate) ? workDate.replace(/\//g, "-") : "";
+}
+
+/**
+ * `<input type="date">` の値（`yyyy-mm-dd`）を作業日（`yyyy/mm/dd`）へ変換する。
+ * 空（未選択）なら空文字を返す。
+ */
+export function fromDateInputValue(value: string): string {
+  return value ? value.replace(/-/g, "/") : "";
+}
+
+/**
  * 月（`yyyy/mm`）を1か月ずらした値を返す（対象月セレクタの前月/翌月送り用）。
  * @param yearMonth `yyyy/mm`
  * @param delta 加算する月数（負値で過去方向）
