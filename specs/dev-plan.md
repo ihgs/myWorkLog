@@ -41,7 +41,7 @@
 | T-06 | 設定コマンド | M2 | T-03 | DONE | R-SET-1, R-SET-2 | settings.feature |
 | T-07 | ダッシュボード集計コマンド | M3 | T-04, T-05, T-06 | DONE | R-ARCH-4, R-DASH-5, R-DASH-6, R-DASH-11 | dashboard.feature |
 | T-08 | 集計ロジックの単体テスト | M3 | T-07 | DONE | R-NF-4 | cargo test |
-| T-09 | ルーティング/ナビゲーション | M4 | T-01 | TODO | R-UI-1 | cross-cutting.feature |
+| T-09 | ルーティング/ナビゲーション | M4 | T-01 | DONE | R-UI-1 | cross-cutting.feature |
 | T-10 | invokeラッパ/共通フォーマット | M4 | T-04, T-05, T-06, T-07 | TODO | R-ARCH-2, R-UI-2 | cross-cutting.feature |
 | T-11 | 作業区分画面 | M5 | T-09, T-10 | TODO | R-CAT-1, R-CAT-3〜6, R-CAT-9 | work-category-management.feature |
 | T-12 | 実績入力画面 | M5 | T-09, T-10 | TODO | R-ACT-2, R-ACT-3, R-ACT-4 | actual-work-entry.feature |

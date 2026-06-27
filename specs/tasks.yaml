@@ -138,7 +138,7 @@ tasks:
     milestone: M4
     desc: ルート(/, /categories, /actuals, /settings)とナビゲーション、画面切替の骨組み。
     depends_on: [T-01]
-    status: TODO
+    status: DONE
     ears: [R-UI-1]
     features: [cross-cutting.feature]
     scenario_tags: ["@R-UI-1"]
