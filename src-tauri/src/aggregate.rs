@@ -280,4 +280,201 @@ mod tests {
         let day30 = d.days.iter().find(|e| e.date == "2026/06/30").unwrap();
         assert_eq!(day30.total_hours, 3.0);
     }
+
+    // ----------------------------------------------------------------
+    // T-08: 集計ロジックの境界網羅（R-NF-4）。
+    // 月予定0埋め / 欠損日補完 / 日合計 / 基準線反映 の境界を網羅する。
+    // ----------------------------------------------------------------
+
+    #[test]
+    fn parse_year_month_rejects_invalid_formats() {
+        // 形式不正は全てエラー（境界: 桁数・区切り・非数字・範囲外）。
+        for bad in ["", "2026-06", "2026/6", "026/06", "2026/006", "abcd/06", "2026/ab"] {
+            assert!(
+                parse_year_month(bad).is_err(),
+                "不正形式を拒否すべき: {bad}"
+            );
+        }
+        // 月の範囲外。
+        assert!(parse_year_month("2026/00").is_err());
+        assert!(parse_year_month("2026/13").is_err());
+        // 正常系（境界値の月）。
+        assert_eq!(parse_year_month("2026/01").unwrap(), (2026, 1));
+        assert_eq!(parse_year_month("2026/12").unwrap(), (2026, 12));
+    }
+
+    #[test]
+    fn last_day_of_month_boundaries() {
+        // 月末日の境界（30/31/28/閏年29/年跨ぎ12月）。
+        assert_eq!(last_day_of_month(2026, 1).unwrap(), 31);
+        assert_eq!(last_day_of_month(2026, 4).unwrap(), 30);
+        assert_eq!(last_day_of_month(2026, 2).unwrap(), 28);
+        assert_eq!(last_day_of_month(2024, 2).unwrap(), 29); // 閏年
+        assert_eq!(last_day_of_month(2000, 2).unwrap(), 29); // 400で割り切れる閏年
+        assert_eq!(last_day_of_month(1900, 2).unwrap(), 28); // 100で割り切れ平年
+        assert_eq!(last_day_of_month(2026, 12).unwrap(), 31); // 年跨ぎ計算
+    }
+
+    #[test]
+    fn summary_propagates_year_month_format_error() {
+        // 不正な対象月はコマンド層へエラーを伝播（Result<_,String>）。
+        let c = conn();
+        assert!(dashboard_summary(&c, "2026/13").is_err());
+        assert!(daily_stacked(&c, "bad").is_err());
+    }
+
+    #[test]
+    fn summary_empty_when_no_categories_and_no_actuals() {
+        // 区分も実績も無い月は全て0・区分一覧は空。
+        let c = conn();
+        let s = dashboard_summary(&c, "2026/06").expect("集計");
+        assert_eq!(s.year_month, "2026/06");
+        assert!(s.categories.is_empty());
+        assert_eq!(s.total.planned_hours, 0.0);
+        assert_eq!(s.total.actual_hours, 0.0);
+    }
+
+    #[test]
+    fn summary_zero_fills_plan_for_other_month_plan_only() {
+        // 月予定0埋め境界: 当該区分に「別月」の月予定しか無い場合は当月予定0。
+        let mut c = conn();
+        let dev = work_category::create(
+            &mut c,
+            "DEV",
+            "開発",
+            0.0,
+            &[
+                MonthlyPlanInput {
+                    target_month: "2026/05".into(),
+                    planned_hours: 20.0,
+                },
+                MonthlyPlanInput {
+                    target_month: "2026/07".into(),
+                    planned_hours: 25.0,
+                },
+            ],
+        )
+        .expect("開発");
+        actual_work::create(&c, dev.id, 4.0, "2026/06/15", None).expect("当月実績");
+
+        let s = dashboard_summary(&c, "2026/06").expect("集計");
+        let dev_sum = s.categories.iter().find(|x| x.code == "DEV").unwrap();
+        assert_eq!(dev_sum.planned_hours, 0.0, "当月の月予定が無ければ0埋め");
+        assert_eq!(dev_sum.actual_hours, 4.0);
+        assert_eq!(s.total.planned_hours, 0.0);
+    }
+
+    #[test]
+    fn summary_sums_multiple_actuals_same_category() {
+        // 日合計/区分合計の積算境界: 同一区分の複数実績を合算。
+        let mut c = conn();
+        let dev = work_category::create(
+            &mut c,
+            "DEV",
+            "開発",
+            0.0,
+            &[MonthlyPlanInput {
+                target_month: "2026/06".into(),
+                planned_hours: 10.0,
+            }],
+        )
+        .expect("開発");
+        actual_work::create(&c, dev.id, 2.5, "2026/06/01", None).expect("a1");
+        actual_work::create(&c, dev.id, 1.5, "2026/06/01", None).expect("a2 同日");
+        actual_work::create(&c, dev.id, 3.0, "2026/06/20", None).expect("a3");
+
+        let s = dashboard_summary(&c, "2026/06").expect("集計");
+        let dev_sum = s.categories.iter().find(|x| x.code == "DEV").unwrap();
+        assert_eq!(dev_sum.actual_hours, 7.0);
+        assert_eq!(s.total.actual_hours, 7.0);
+    }
+
+    #[test]
+    fn daily_stacked_february_covers_28_days() {
+        // 欠損日補完の境界: 28日月は28エントリ、全日が軸上に存在。
+        let c = conn();
+        let d = daily_stacked(&c, "2026/02").expect("日別");
+        assert_eq!(d.days.len(), 28);
+        assert_eq!(d.days.first().unwrap().date, "2026/02/01");
+        assert_eq!(d.days.last().unwrap().date, "2026/02/28");
+        assert!(d.days.iter().all(|e| e.total_hours == 0.0));
+    }
+
+    #[test]
+    fn daily_stacked_leap_february_covers_29_days() {
+        // 欠損日補完の境界: 閏年2月は29エントリ。
+        let c = conn();
+        let d = daily_stacked(&c, "2024/02").expect("日別");
+        assert_eq!(d.days.len(), 29);
+        assert_eq!(d.days.last().unwrap().date, "2024/02/29");
+    }
+
+    #[test]
+    fn daily_stacked_sums_same_day_same_category() {
+        // 日合計の境界: 同日・同区分の複数実績を1セグメントに合算。
+        let mut c = conn();
+        let dev = work_category::create(&mut c, "DEV", "開発", 0.0, &[]).expect("開発");
+        actual_work::create(&c, dev.id, 2.0, "2026/06/10", None).expect("a1");
+        actual_work::create(&c, dev.id, 3.5, "2026/06/10", None).expect("a2");
+
+        let d = daily_stacked(&c, "2026/06").expect("日別");
+        let day10 = d.days.iter().find(|e| e.date == "2026/06/10").unwrap();
+        assert_eq!(day10.total_hours, 5.5, "同日同区分は合算");
+        assert_eq!(day10.by_category.len(), 1, "1区分1セグメント");
+        assert_eq!(day10.by_category[0].hours, 5.5);
+    }
+
+    #[test]
+    fn daily_stacked_excludes_other_months() {
+        // 月境界: 前月末/翌月初の実績は当月の軸に載らない。
+        let mut c = conn();
+        let dev = work_category::create(&mut c, "DEV", "開発", 0.0, &[]).expect("開発");
+        actual_work::create(&c, dev.id, 5.0, "2026/05/31", None).expect("前月末");
+        actual_work::create(&c, dev.id, 6.0, "2026/07/01", None).expect("翌月初");
+        actual_work::create(&c, dev.id, 4.0, "2026/06/01", None).expect("当月初");
+        actual_work::create(&c, dev.id, 4.0, "2026/06/30", None).expect("当月末");
+
+        let d = daily_stacked(&c, "2026/06").expect("日別");
+        let total: f64 = d.days.iter().map(|e| e.total_hours).sum();
+        assert_eq!(total, 8.0, "当月分のみ（前月末・翌月初を除外）");
+    }
+
+    #[test]
+    fn daily_stacked_segment_order_follows_category_registration() {
+        // 区分別積み上げの色割り当て安定化: セグメントは区分登録順。
+        let mut c = conn();
+        let first = work_category::create(&mut c, "A", "区分A", 0.0, &[]).expect("A");
+        let second = work_category::create(&mut c, "B", "区分B", 0.0, &[]).expect("B");
+        // 後に登録したBの実績を先に投入しても、出力順はA→Bになること。
+        actual_work::create(&c, second.id, 1.0, "2026/06/05", None).expect("B実績");
+        actual_work::create(&c, first.id, 2.0, "2026/06/05", None).expect("A実績");
+
+        let d = daily_stacked(&c, "2026/06").expect("日別");
+        let day5 = d.days.iter().find(|e| e.date == "2026/06/05").unwrap();
+        assert_eq!(day5.by_category.len(), 2);
+        assert_eq!(day5.by_category[0].work_category_id, first.id);
+        assert_eq!(day5.by_category[1].work_category_id, second.id);
+        assert_eq!(day5.total_hours, 3.0);
+    }
+
+    #[test]
+    fn daily_stacked_reflects_updated_baseline() {
+        // 基準線反映の境界: setting更新後の基準線が同梱される（R-DASH-9 / R-SET-4連動）。
+        let c = conn();
+        let before = daily_stacked(&c, "2026/06").expect("更新前");
+        assert_eq!(before.baseline_hours, 8.0, "初期基準線");
+
+        setting::update(&c, 7.5).expect("基準線更新");
+        let after = daily_stacked(&c, "2026/06").expect("更新後");
+        assert_eq!(after.baseline_hours, 7.5, "更新後の基準線を反映");
+    }
+
+    #[test]
+    fn daily_stacked_baseline_zero_is_passed_through() {
+        // 基準線反映の境界: 0でもそのまま同梱（クランプしない）。
+        let c = conn();
+        setting::update(&c, 0.0).expect("基準線0");
+        let d = daily_stacked(&c, "2026/06").expect("日別");
+        assert_eq!(d.baseline_hours, 0.0);
+    }
 }

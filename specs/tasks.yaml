@@ -126,7 +126,7 @@ tasks:
     milestone: M3
     desc: 月予定0埋め・欠損日補完・日合計・基準線反映の境界を網羅するRust単体テスト。
     depends_on: [T-07]
-    status: TODO
+    status: DONE
     ears: [R-NF-4]
     features: []
     scenario_tags: []
