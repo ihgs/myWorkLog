@@ -177,7 +177,7 @@ tasks:
     milestone: M5
     desc: 一覧・登録・編集・削除、作業区分セレクト、期間/区分絞り込み。
     depends_on: [T-09, T-10]
-    status: TODO
+    status: DONE
     ears: [R-ACT-2, R-ACT-3, R-ACT-4]
     features: [actual-work-entry.feature]
     scenario_tags: ["@R-ACT-2", "@R-ACT-3", "@R-ACT-4"]

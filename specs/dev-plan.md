@@ -44,7 +44,7 @@
 | T-09 | ルーティング/ナビゲーション | M4 | T-01 | DONE | R-UI-1 | cross-cutting.feature |
 | T-10 | invokeラッパ/共通フォーマット | M4 | T-04, T-05, T-06, T-07 | DONE | R-ARCH-2, R-UI-2 | cross-cutting.feature |
 | T-11 | 作業区分画面 | M5 | T-09, T-10 | DONE | R-CAT-1, R-CAT-3〜6, R-CAT-9 | work-category-management.feature |
-| T-12 | 実績入力画面 | M5 | T-09, T-10 | TODO | R-ACT-2, R-ACT-3, R-ACT-4 | actual-work-entry.feature |
+| T-12 | 実績入力画面 | M5 | T-09, T-10 | DONE | R-ACT-2, R-ACT-3, R-ACT-4 | actual-work-entry.feature |
 | T-13 | ダッシュボード画面 | M5 | T-07, T-09, T-10 | TODO | R-DASH-1〜4, R-DASH-7〜10 | dashboard.feature |
 | T-14 | 設定画面 | M5 | T-06, T-09, T-10, T-13 | TODO | R-SET-1, R-SET-2, R-SET-4 | settings.feature |
 | T-15 | バリデーション/エラー通知(横断) | M6 | T-04, T-05, T-11, T-12 | TODO | R-CAT-7, R-CAT-8, R-ACT-7, R-NF-1, R-NF-2 | work-category / actual-work / cross-cutting |

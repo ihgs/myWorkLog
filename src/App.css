@@ -246,14 +246,43 @@ button.danger {
   font-size: 0.85rem;
 }
 
+/* ---- 実績入力画面（T-12） ---- */
+.filter-bar {
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  background-color: #ffffff;
+}
+
+.filter-bar label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  font-weight: 600;
+  gap: 0.3rem;
+}
+
+.category-form select,
+.category-form input,
+.filter-bar select,
+.filter-bar input {
+  box-shadow: none;
+  border: 1px solid #c4c4c4;
+}
+
 @media (prefers-color-scheme: dark) {
   .category-form,
+  .filter-bar,
   .category-table th {
     background-color: #1f1f1f;
     border-color: #3a3a3a;
   }
 
-  .category-form input {
+  .category-form input,
+  .category-form select,
+  .filter-bar input,
+  .filter-bar select {
     border-color: #3a3a3a;
   }
 
