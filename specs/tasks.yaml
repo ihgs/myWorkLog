@@ -191,7 +191,7 @@ tasks:
       対象月セレクタ(当月初期)、予定vs実績棒グラフ(全体/区分別)、日別積み上げ棒グラフ
       (区分色分け・基準線・日合計ラベル)。react-vega 導入。
     depends_on: [T-07, T-09, T-10]
-    status: TODO
+    status: DONE
     ears: [R-DASH-1, R-DASH-2, R-DASH-3, R-DASH-4, R-DASH-7, R-DASH-8, R-DASH-9, R-DASH-10]
     features: [dashboard.feature]
     scenario_tags: ["@R-DASH-1", "@R-DASH-2", "@R-DASH-3", "@R-DASH-4", "@R-DASH-7", "@R-DASH-8", "@R-DASH-9", "@R-DASH-10"]

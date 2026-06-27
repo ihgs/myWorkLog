@@ -271,6 +271,57 @@ button.danger {
   border: 1px solid #c4c4c4;
 }
 
+/* ---- ダッシュボード画面（T-13） ---- */
+.month-selector {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.month-input {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  font-weight: 600;
+  gap: 0.3rem;
+}
+
+.month-input input {
+  box-shadow: none;
+  border: 1px solid #c4c4c4;
+  width: 8rem;
+}
+
+.chart-block {
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  background-color: #ffffff;
+}
+
+.chart-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.chart-container .vega-embed {
+  width: 100%;
+}
+
+@media (prefers-color-scheme: dark) {
+  .chart-block {
+    background-color: #1f1f1f;
+    border-color: #3a3a3a;
+  }
+
+  .month-input input {
+    border-color: #3a3a3a;
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   .category-form,
   .filter-bar,
