@@ -4,14 +4,16 @@
 //! SQLiteのDBファイルは app_data_dir 配下に配置する（R-DATA-3）。
 //! 業務データはSQLiteに永続化する（R-DATA-1）。
 //!
-//! スキーマ/マイグレーション/初期データの投入は後続タスク(T-02)で実装する。
-//! 本モジュールは接続確立と Tauri State 経由での共有のみを担う。
+//! スキーマ/マイグレーション/初期データの投入は `schema` モジュールが担う(T-02)。
+//! 本モジュールは接続確立・マイグレーション実行・Tauri State 経由での共有を担う。
 
 use std::path::Path;
 use std::sync::Mutex;
 
 use rusqlite::Connection;
 use tauri::{AppHandle, Manager};
+
+use crate::schema;
 
 /// app_data_dir 配下に配置するDBファイル名。
 pub const DB_FILE_NAME: &str = "mylog.db";
@@ -27,8 +29,12 @@ pub struct AppState {
 ///
 /// パスとロジックを分離してテスト可能にするためのヘルパ。
 /// `:memory:` を渡せばインメモリDBを開ける。
+///
+/// 接続単位で必要なPRAGMA（外部キー制約=カスケード削除）を有効化する（R-DATA-4）。
 pub fn open_connection(path: &Path) -> Result<Connection, String> {
-    Connection::open(path).map_err(|e| format!("DB接続に失敗しました: {e}"))
+    let conn = Connection::open(path).map_err(|e| format!("DB接続に失敗しました: {e}"))?;
+    schema::apply_connection_pragmas(&conn)?;
+    Ok(conn)
 }
 
 /// app_data_dir を解決し、その配下にDBファイルへの接続を確立する（R-DATA-3）。
@@ -44,7 +50,12 @@ pub fn init(app: &AppHandle) -> Result<Connection, String> {
         .map_err(|e| format!("データディレクトリの作成に失敗しました: {e}"))?;
 
     let db_path = dir.join(DB_FILE_NAME);
-    open_connection(&db_path)
+    let conn = open_connection(&db_path)?;
+
+    // 初回起動でテーブル作成・初期設定投入（R-DATA-2 / R-SET-3）。べき等。
+    schema::migrate(&conn)?;
+
+    Ok(conn)
 }
 
 #[cfg(test)]

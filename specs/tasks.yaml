@@ -46,7 +46,7 @@ tasks:
       data-model.dbml を正にスキーマDDLを作成し、初回起動マイグレーションを実装。
       setting 初期レコード(baseline_hours = 8)を投入。FK ON DELETE CASCADE を有効化。
     depends_on: [T-01]
-    status: TODO
+    status: DONE
     ears: [R-DATA-2, R-SET-3]
     features: [data-persistence.feature, settings.feature]
     scenario_tags: ["@R-DATA-2", "@R-SET-3"]

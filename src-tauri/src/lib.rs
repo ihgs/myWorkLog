@@ -1,4 +1,5 @@
 mod db;
+mod schema;
 
 use db::AppState;
 use tauri::{Manager, State};
