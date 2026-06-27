@@ -64,6 +64,14 @@ export function isValidDate(value: string): boolean {
 }
 
 /**
+ * 作業日（`yyyy/mm/dd`）から対象月（`yyyy/mm`）を取り出す。
+ * 不正な日付形式の場合は null を返す（呼び出し側で未選択として扱う）。
+ */
+export function dateToMonth(workDate: string): string | null {
+  return isValidDate(workDate) ? workDate.slice(0, 7) : null;
+}
+
+/**
  * 月（`yyyy/mm`）を1か月ずらした値を返す（対象月セレクタの前月/翌月送り用）。
  * @param yearMonth `yyyy/mm`
  * @param delta 加算する月数（負値で過去方向）

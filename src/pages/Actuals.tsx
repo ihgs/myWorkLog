@@ -1,10 +1,12 @@
 // =====================================================================
 // 実績入力画面（T-12）。
 //
-// 実績工数の一覧・登録・編集・削除を UI から行う。作業区分は既存の作業区分から
-// セレクトで選択させ、任意のコード・名前を自由入力させない（R-ACT-2）。一覧では
-// 作業日・作業区分・実績時間・メモを表示する（R-ACT-3）。期間（from〜to）および
-// 作業区分による絞り込みに対応する（R-ACT-4）。
+// 実績工数の一覧・登録・編集・削除を UI から行う。登録は「作業日」を基準に、
+// その月（yyyy/mm）に月予定が登録されている作業区分のみをボタンとして提示し、
+// ボタンをクリックすると実績時間・メモを入力するダイアログを開く。作業区分は
+// 既存の作業区分から選ぶ形となり、任意のコード・名前を自由入力させない
+// （R-ACT-2）。一覧では作業日・作業区分・実績時間・メモを表示する（R-ACT-3）。
+// 期間（from〜to）および作業区分による絞り込みに対応する（R-ACT-4）。
 //
 // 全データ授受は lib/api の invoke ラッパ経由（R-ARCH-2）。作業日・月の表示は
 // yyyy/mm/dd 形式で統一する（R-UI-2）。入力バリデーションは共通モジュール
@@ -21,18 +23,22 @@ import {
   listWorkCategories,
   updateActualWork,
 } from "../lib/api";
-import { currentDate } from "../lib/format";
+import { currentDate, dateToMonth, isValidDate } from "../lib/format";
 import { useToast } from "../lib/toast";
-import { validateActualForm } from "../lib/validation";
+import { validateNonNegativeNumber } from "../lib/validation";
 import type { ActualWork, WorkCategory } from "../lib/types";
 
-/** 編集中フォームの状態（数値も編集中は文字列で保持する）。`id` が null なら新規登録。 */
-interface FormState {
+/**
+ * 実績時間・メモを入力するダイアログの状態。`id` が null なら新規登録、
+ * それ以外は当該実績工数の編集。作業区分・作業日は確定済みとして保持する。
+ */
+interface DialogState {
   id: number | null;
-  workCategoryId: string;
-  actualHours: string;
+  category: WorkCategory;
   workDate: string;
+  actualHours: string;
   memo: string;
+  error: string | null;
 }
 
 /** 絞り込み条件（R-ACT-4）。空欄は未指定。 */
@@ -42,42 +48,21 @@ interface FilterState {
   workCategoryId: string;
 }
 
-function emptyForm(): FormState {
-  return {
-    id: null,
-    workCategoryId: "",
-    actualHours: "",
-    workDate: currentDate(),
-    memo: "",
-  };
-}
-
 const emptyFilter: FilterState = {
   fromDate: "",
   toDate: "",
   workCategoryId: "",
 };
 
-function toFormState(work: ActualWork): FormState {
-  return {
-    id: work.id,
-    workCategoryId: String(work.workCategoryId),
-    actualHours: String(work.actualHours),
-    workDate: work.workDate,
-    memo: work.memo ?? "",
-  };
-}
-
 function Actuals() {
   const [categories, setCategories] = useState<WorkCategory[]>([]);
   const [works, setWorks] = useState<ActualWork[]>([]);
-  const [form, setForm] = useState<FormState>(emptyForm);
+  // 登録の基準となる作業日。ここから対象月を導出してボタンを並べる。
+  const [workDate, setWorkDate] = useState<string>(currentDate);
+  const [dialog, setDialog] = useState<DialogState | null>(null);
   const [filter, setFilter] = useState<FilterState>(emptyFilter);
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const toast = useToast();
-
-  const isEditing = form.id !== null;
 
   /** 作業区分IDから区分（コード/名前）を引くための索引（R-ACT-3 の表示用）。 */
   const categoryById = useMemo(() => {
@@ -85,6 +70,17 @@ function Actuals() {
     for (const c of categories) map.set(c.id, c);
     return map;
   }, [categories]);
+
+  /** 作業日から導いた対象月（`yyyy/mm`）。不正な日付なら null。 */
+  const targetMonth = useMemo(() => dateToMonth(workDate), [workDate]);
+
+  /** 対象月に月予定が登録されている作業区分のみをボタン化する。 */
+  const monthCategories = useMemo(() => {
+    if (!targetMonth) return [];
+    return categories.filter((c) =>
+      c.monthlyPlans.some((p) => p.targetMonth === targetMonth),
+    );
+  }, [categories, targetMonth]);
 
   /** 現在の絞り込み条件で実績工数を取得する（R-ACT-4）。 */
   async function reloadWorks(current: FilterState) {
@@ -118,43 +114,67 @@ function Actuals() {
     void reloadWorks(emptyFilter);
   }, []);
 
-  function resetForm() {
-    setForm(emptyForm());
+  /** 区分ボタンのクリック → 当該区分・作業日で新規入力ダイアログを開く。 */
+  function openCreateDialog(category: WorkCategory) {
+    setDialog({
+      id: null,
+      category,
+      workDate,
+      actualHours: "",
+      memo: "",
+      error: null,
+    });
   }
 
-  function startEdit(work: ActualWork) {
-    setForm(toFormState(work));
-    setError(null);
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    // フロント側バリデーション（R-ACT-7 / R-NF-2）。Rust側でも二重に検証する。
-    const message = validateActualForm(form);
-    if (message) {
-      setError(message);
+  /** 一覧の「編集」 → 当該実績工数の値でダイアログを開く。 */
+  function openEditDialog(work: ActualWork) {
+    const category = categoryById.get(work.workCategoryId);
+    if (!category) {
+      toast.notifyError("対象の作業区分が見つかりませんでした。");
       return;
     }
-    setError(null);
-    const memo = form.memo.trim() === "" ? null : form.memo.trim();
+    setDialog({
+      id: work.id,
+      category,
+      workDate: work.workDate,
+      actualHours: String(work.actualHours),
+      memo: work.memo ?? "",
+      error: null,
+    });
+  }
+
+  function closeDialog() {
+    setDialog(null);
+  }
+
+  async function submitDialog(e: React.FormEvent) {
+    e.preventDefault();
+    if (!dialog) return;
+    // フロント側バリデーション（R-ACT-7 / R-NF-2）。Rust側でも二重に検証する。
+    const message = validateNonNegativeNumber(dialog.actualHours, "実績時間");
+    if (message) {
+      setDialog({ ...dialog, error: message });
+      return;
+    }
+    const memo = dialog.memo.trim() === "" ? null : dialog.memo.trim();
     try {
-      if (form.id === null) {
+      if (dialog.id === null) {
         await createActualWork({
-          workCategoryId: Number(form.workCategoryId),
-          actualHours: Number(form.actualHours),
-          workDate: form.workDate,
+          workCategoryId: dialog.category.id,
+          actualHours: Number(dialog.actualHours),
+          workDate: dialog.workDate,
           memo,
         });
       } else {
         await updateActualWork({
-          id: form.id,
-          workCategoryId: Number(form.workCategoryId),
-          actualHours: Number(form.actualHours),
-          workDate: form.workDate,
+          id: dialog.id,
+          workCategoryId: dialog.category.id,
+          actualHours: Number(dialog.actualHours),
+          workDate: dialog.workDate,
           memo,
         });
       }
-      resetForm();
+      closeDialog();
       await reloadWorks(filter);
     } catch (err) {
       // コマンド失敗（Rust側バリデーション拒否を含む）をユーザーへ通知（R-NF-1）。
@@ -172,7 +192,7 @@ function Actuals() {
     if (!ok) return;
     try {
       await deleteActualWork(work.id);
-      if (form.id === work.id) resetForm();
+      if (dialog?.id === work.id) closeDialog();
       await reloadWorks(filter);
     } catch (err) {
       toast.notifyError(err);
@@ -200,83 +220,48 @@ function Actuals() {
     <section className="actuals-page">
       <h1>実績入力</h1>
 
-      {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
-      )}
+      <div className="actual-entry">
+        <h2>実績工数の登録</h2>
+        <label className="month-input">
+          作業日
+          <input
+            type="text"
+            value={workDate}
+            onChange={(e) => setWorkDate(e.target.value)}
+            placeholder="2026/06/27"
+          />
+        </label>
 
-      <form className="category-form" onSubmit={handleSubmit}>
-        <h2>{isEditing ? "実績工数の編集" : "実績工数の登録"}</h2>
-        <div className="field-row">
-          <label>
-            作業区分
-            <select
-              value={form.workCategoryId}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, workCategoryId: e.target.value }))
-              }
-            >
-              <option value="">選択してください</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.code} / {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            実績時間(h)
-            <input
-              type="number"
-              step="0.5"
-              min="0"
-              value={form.actualHours}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, actualHours: e.target.value }))
-              }
-              placeholder="6"
-            />
-          </label>
-          <label>
-            作業日
-            <input
-              type="text"
-              value={form.workDate}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, workDate: e.target.value }))
-              }
-              placeholder="2026/06/27"
-            />
-          </label>
-          <label>
-            メモ（任意）
-            <input
-              type="text"
-              value={form.memo}
-              onChange={(e) => setForm((f) => ({ ...f, memo: e.target.value }))}
-              placeholder="設計"
-            />
-          </label>
-        </div>
-
-        {categories.length === 0 && (
-          <p className="muted">
-            登録できる作業区分がありません。先に作業区分を登録してください。
+        {!isValidDate(workDate) ? (
+          <p className="form-error" role="alert">
+            作業日は yyyy/mm/dd 形式で入力してください。
           </p>
+        ) : monthCategories.length === 0 ? (
+          <p className="muted">
+            {targetMonth} に月予定が登録されている作業区分がありません。先に作業区分へ
+            当月の月予定を登録してください。
+          </p>
+        ) : (
+          <>
+            <p className="muted">
+              {targetMonth} の作業区分です。ボタンを押して実績を入力してください。
+            </p>
+            <div className="actual-buttons">
+              {monthCategories.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className="category-button"
+                  onClick={() => openCreateDialog(c)}
+                >
+                  <span className="category-button-code">{c.code}</span>
+                  <span className="category-button-name">{c.name}</span>
+                </button>
+              ))}
+            </div>
+          </>
         )}
-
-        <div className="form-actions">
-          <button type="submit" disabled={categories.length === 0}>
-            {isEditing ? "更新を確定" : "登録を確定"}
-          </button>
-          {isEditing && (
-            <button type="button" onClick={resetForm} className="secondary">
-              キャンセル
-            </button>
-          )}
-        </div>
-      </form>
+      </div>
 
       <form className="filter-bar" onSubmit={applyFilter}>
         <h2>絞り込み</h2>
@@ -350,13 +335,11 @@ function Actuals() {
                 <td>{w.workDate}</td>
                 <td>{categoryLabel(w.workCategoryId)}</td>
                 <td>{w.actualHours}</td>
-                <td>
-                  {w.memo ? w.memo : <span className="muted">-</span>}
-                </td>
+                <td>{w.memo ? w.memo : <span className="muted">-</span>}</td>
                 <td>
                   <button
                     type="button"
-                    onClick={() => startEdit(w)}
+                    onClick={() => openEditDialog(w)}
                     className="secondary"
                   >
                     編集
@@ -373,6 +356,83 @@ function Actuals() {
             ))}
           </tbody>
         </table>
+      )}
+
+      {dialog && (
+        <div
+          className="modal-overlay"
+          role="presentation"
+          onClick={closeDialog}
+        >
+          <div
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="実績工数の入力"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <form className="category-form" onSubmit={submitDialog}>
+              <h2>
+                {dialog.id === null ? "実績工数の登録" : "実績工数の編集"}
+              </h2>
+              <p className="modal-context">
+                <span className="muted">作業区分</span>{" "}
+                {dialog.category.code} / {dialog.category.name}
+                <br />
+                <span className="muted">作業日</span> {dialog.workDate}
+              </p>
+
+              {dialog.error && (
+                <p className="form-error" role="alert">
+                  {dialog.error}
+                </p>
+              )}
+
+              <div className="field-row">
+                <label>
+                  実績時間(h)
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    autoFocus
+                    value={dialog.actualHours}
+                    onChange={(e) =>
+                      setDialog((d) =>
+                        d ? { ...d, actualHours: e.target.value } : d,
+                      )
+                    }
+                    placeholder="6"
+                  />
+                </label>
+                <label>
+                  メモ（任意）
+                  <input
+                    type="text"
+                    value={dialog.memo}
+                    onChange={(e) =>
+                      setDialog((d) => (d ? { ...d, memo: e.target.value } : d))
+                    }
+                    placeholder="設計"
+                  />
+                </label>
+              </div>
+
+              <div className="form-actions">
+                <button type="submit">
+                  {dialog.id === null ? "登録を確定" : "更新を確定"}
+                </button>
+                <button
+                  type="button"
+                  onClick={closeDialog}
+                  className="secondary"
+                >
+                  キャンセル
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </section>
   );
