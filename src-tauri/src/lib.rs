@@ -1,4 +1,10 @@
 mod db;
+// models / repository は T-03 で定義。コマンド層（T-04〜T-07）から利用する。
+// 利用が始まるまでの未使用警告を抑止する。
+#[allow(dead_code)]
+mod models;
+#[allow(dead_code)]
+mod repository;
 mod schema;
 
 use db::AppState;

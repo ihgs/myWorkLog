@@ -60,7 +60,7 @@ tasks:
       Rustドメインモデル/DTO(WorkCategory, MonthlyPlan, ActualWork, Setting; serde derive)と
       リポジトリ層(CRUD・絞り込みクエリ)。SQLはRust側に集約する。
     depends_on: [T-02]
-    status: TODO
+    status: DONE
     ears: [R-ARCH-1, R-ARCH-3, R-ARCH-4]
     features: []
     scenario_tags: []
