@@ -152,7 +152,7 @@ tasks:
       invoke型付きラッパ(TS↔Rustコマンド境界)＋日付/月の共通フォーマット
       (yyyy/mm, yyyy/mm/dd)ユーティリティ。全データ授受はinvoke経由。
     depends_on: [T-04, T-05, T-06, T-07]
-    status: TODO
+    status: DONE
     ears: [R-ARCH-2, R-UI-2]
     features: [cross-cutting.feature]
     scenario_tags: ["@R-UI-2"]
