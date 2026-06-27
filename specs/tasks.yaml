@@ -165,7 +165,7 @@ tasks:
     desc: >-
       一覧・登録・編集・削除(月予定の複数入力UI、削除時のカスケード確認ダイアログ)。
     depends_on: [T-09, T-10]
-    status: TODO
+    status: DONE
     ears: [R-CAT-1, R-CAT-3, R-CAT-4, R-CAT-5, R-CAT-6, R-CAT-9]
     features: [work-category-management.feature]
     scenario_tags: ["@R-CAT-1", "@R-CAT-3", "@R-CAT-4", "@R-CAT-5", "@R-CAT-6", "@R-CAT-9"]
