@@ -1,0 +1,70 @@
+name: Release
+
+# v* タグの push（または手動実行）で、mac/Windows のランナー上で Tauri アプリを
+# ネイティブビルドし、生成した .dmg/.msi などを GitHub リリース（下書き）へ添付する。
+# クロスコンパイルは行わず、各 OS のランナーでその OS 向けにビルドする（R-NF-3）。
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "リリースタグ (例: v0.1.0)"
+        required: true
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: release (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    permissions:
+      # tauri-action がリリースの作成・アセット添付を行うために必要。
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # pnpm のバージョンは package.json の packageManager で固定する
+      # （version を併記すると ERR_PNPM_BAD_PM_VERSION になるため指定しない）。
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      # tauri-action が frontend build（beforeBuildCommand）→ tauri build →
+      # リリース作成・アセット添付までを実施する。tagName/releaseName は
+      # タグ push 時はそのタグ、手動実行時は入力値を用いる。
+      - name: Build and publish release (draft)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
+          releaseName: "mylog ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}"
+          releaseDraft: true
+          prerelease: false
