@@ -3,7 +3,8 @@ import { NavLink, Outlet } from "react-router-dom";
 const navItems = [
   { to: "/", label: "ダッシュボード", end: true },
   { to: "/categories", label: "作業区分", end: false },
-  { to: "/actuals", label: "実績入力", end: false },
+  { to: "/actuals", label: "実績入力", end: true },
+  { to: "/actuals/list", label: "実績一覧", end: false },
   { to: "/settings", label: "設定", end: false },
 ];
 
