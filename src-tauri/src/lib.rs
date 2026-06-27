@@ -1,3 +1,4 @@
+mod commands;
 mod db;
 // models / repository は T-03 で定義。コマンド層（T-04〜T-07）から利用する。
 // 利用が始まるまでの未使用警告を抑止する。
@@ -6,6 +7,10 @@ mod models;
 #[allow(dead_code)]
 mod repository;
 mod schema;
+
+use commands::{
+    create_work_category, delete_work_category, list_work_categories, update_work_category,
+};
 
 use db::AppState;
 use tauri::{Manager, State};
@@ -38,7 +43,13 @@ pub fn run() {
             });
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![db_health_check])
+        .invoke_handler(tauri::generate_handler![
+            db_health_check,
+            list_work_categories,
+            create_work_category,
+            update_work_category,
+            delete_work_category
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

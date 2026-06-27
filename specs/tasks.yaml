@@ -74,7 +74,7 @@ tasks:
       list/create/update/delete_work_category(月予定含む)。削除時に月予定・実績を
       カスケード削除。コードは重複許容(ユニーク制約を設けない)。月予定は yyyy/mm 受付。
     depends_on: [T-03]
-    status: TODO
+    status: DONE
     ears: [R-CAT-1, R-CAT-2, R-CAT-3, R-CAT-4, R-CAT-5, R-CAT-9, R-DATA-4]
     features: [work-category-management.feature]
     scenario_tags: ["@R-CAT-1", "@R-CAT-2", "@R-CAT-3", "@R-CAT-4", "@R-CAT-5", "@R-CAT-9", "@R-DATA-4"]
