@@ -88,7 +88,7 @@ tasks:
       list_actual_works(期間/区分絞り込み)・create/update/delete_actual_work。
       作業日 yyyy/mm/dd、メモは任意(NULL許容)。
     depends_on: [T-03]
-    status: TODO
+    status: DONE
     ears: [R-ACT-1, R-ACT-3, R-ACT-4, R-ACT-5, R-ACT-6, R-ACT-8, R-ACT-9]
     features: [actual-work-entry.feature]
     scenario_tags: ["@R-ACT-1", "@R-ACT-3", "@R-ACT-4", "@R-ACT-5", "@R-ACT-6", "@R-ACT-8", "@R-ACT-9"]

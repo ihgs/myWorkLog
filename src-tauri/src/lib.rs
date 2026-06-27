@@ -9,7 +9,8 @@ mod repository;
 mod schema;
 
 use commands::{
-    create_work_category, delete_work_category, list_work_categories, update_work_category,
+    create_actual_work, create_work_category, delete_actual_work, delete_work_category,
+    list_actual_works, list_work_categories, update_actual_work, update_work_category,
 };
 
 use db::AppState;
@@ -48,7 +49,11 @@ pub fn run() {
             list_work_categories,
             create_work_category,
             update_work_category,
-            delete_work_category
+            delete_work_category,
+            list_actual_works,
+            create_actual_work,
+            update_actual_work,
+            delete_actual_work
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
