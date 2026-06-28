@@ -173,9 +173,30 @@ button {
   gap: 0.3rem;
 }
 
-.category-form input {
+.category-form input,
+.category-form textarea {
   box-shadow: none;
   border: 1px solid #c4c4c4;
+}
+
+/* 実績入力ダイアログのメモ欄（複数行）。横幅いっぱいに広げる。 */
+.memo-field {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  font-weight: 600;
+  gap: 0.3rem;
+  margin-top: 1rem;
+}
+
+.memo-field textarea {
+  font-family: inherit;
+  font-size: 1em;
+  font-weight: 400;
+  border-radius: 8px;
+  padding: 0.5em 0.7em;
+  resize: vertical;
+  min-height: 4.5rem;
 }
 
 .plans-fieldset {
@@ -285,6 +306,12 @@ button.danger {
 
 .category-table th {
   background-color: #f0f0f0;
+}
+
+/* メモは複数行入力に対応するため、一覧でも改行を保持して表示する。 */
+.memo-cell {
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .plan-list {
@@ -501,6 +528,7 @@ button.danger {
 
   .category-form input,
   .category-form select,
+  .category-form textarea,
   .filter-bar input,
   .filter-bar select,
   .date-input-group input[type="text"],
