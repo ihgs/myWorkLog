@@ -206,7 +206,7 @@ function Categories() {
             予定工数(h)
             <input
               type="number"
-              step="0.5"
+              step="0.1"
               min="0"
               value={form.plannedHours}
               onChange={(e) =>
@@ -235,7 +235,7 @@ function Categories() {
               />
               <input
                 type="number"
-                step="0.5"
+                step="0.1"
                 min="0"
                 value={plan.plannedHours}
                 onChange={(e) =>

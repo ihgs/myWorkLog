@@ -98,7 +98,7 @@ function ActualWorkDialog({ dialog, onChange, onClose, onSaved }: Props) {
               実績時間(h)
               <input
                 type="number"
-                step="0.5"
+                step="0.1"
                 min="0"
                 autoFocus
                 value={dialog.actualHours}
