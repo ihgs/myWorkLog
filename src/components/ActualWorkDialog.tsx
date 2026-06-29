@@ -108,16 +108,18 @@ function ActualWorkDialog({ dialog, onChange, onClose, onSaved }: Props) {
                 placeholder="6"
               />
             </label>
-            <label>
-              メモ（任意）
-              <input
-                type="text"
-                value={dialog.memo}
-                onChange={(e) => onChange({ ...dialog, memo: e.target.value })}
-                placeholder="設計"
-              />
-            </label>
           </div>
+          <label className="memo-field">
+            メモ（任意・複数行可）
+            {/* textarea のため Enter は改行として扱われ、日本語入力（IME）の
+                変換確定の Enter で誤送信されない。送信は「確定」ボタンのみ。 */}
+            <textarea
+              rows={4}
+              value={dialog.memo}
+              onChange={(e) => onChange({ ...dialog, memo: e.target.value })}
+              placeholder={"設計\nレビュー対応 など"}
+            />
+          </label>
 
           <div className="form-actions">
             <button type="submit">

@@ -52,7 +52,9 @@ function ActualWorkTable({
             {showDate && <td>{w.workDate}</td>}
             <td>{categoryLabel(w.workCategoryId)}</td>
             <td>{w.actualHours}</td>
-            <td>{w.memo ? w.memo : <span className="muted">-</span>}</td>
+            <td className="memo-cell">
+              {w.memo ? w.memo : <span className="muted">-</span>}
+            </td>
             <td>
               <button
                 type="button"
